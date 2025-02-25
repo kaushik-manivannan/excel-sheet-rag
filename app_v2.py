@@ -7,8 +7,6 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-
-
 excel_path = "school_scores.csv"  # Update with your actual file path
 df = pd.read_csv(excel_path)
 
