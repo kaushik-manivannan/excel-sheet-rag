@@ -12,6 +12,7 @@ warnings.filterwarnings("ignore")
 excel_path = "school_scores.csv"  # Update with your actual file path
 df = pd.read_csv(excel_path)
 
+
 bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1")
 llm = BedrockLLM(temperature= 0, client=bedrock_client, model_id="amazon.titan-tg1-large")
 
