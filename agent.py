@@ -1,51 +1,62 @@
-# generates python code that 
-# run the generated code 
-# store value 
-# return vallue 
-
-#
-
 import pandas as pd
 import boto3
-import json
+from langchain_aws import BedrockLLM
+from sqlalchemy import create_engine
+#import csvtosql as cs
 
-# Load Excel File into a Pandas DataFrame
-excel_path = "USAHousingDataset.csv"  #file path 
-df = pd.read_excel(excel_path)
+import sqlite3
 
-print(df.head())
-print(df.columns)
-#print(df['Salary'].mean())
-
-# Initialize AWS Bedrock Client
 bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1")
+llm = BedrockLLM(client=bedrock_client, model_id="amazon.titan-tg1-large")
 
-query = "calculate the average total math score?"
-
-def generate_code(query):
-    response = bedrock_client.invoke_model(
-        modelId="amazon.titan-tg1-large",  # Ensure this is correct
-        body=json.dumps({
-            "inputText": f"Write a Python script for: {query}",  # Use inputText instead of prompt for Titan
-            "textGenerationConfig": {
-                "maxTokenCount": 200,
-                "temperature": 0,
-            }
-       
-        }),
-    )  
-    #load json response 
-    response_body = json.loads(response["body"].read().decode("utf-8"))
+excel_path = 'USAHousingDataset.csv'
+df = pd.read_excel(excel_path)
+print(df.info())
 
 
-    return response_body.get("results", [{}])[0].get("outputText", "No code generated")
+conn = sqlite3.connect('housing_info.db')
+cursor = conn.cursor()
+
+table_name = 'housing_info'
+
+df.to_sql(table_name, conn, if_exists ='replace', index = False)
+print(' df converted to sql successfully ')
+
+cursor.execute("SELECT * FROM housing_info LIMIT 5;")
+rows = cursor.fetchall()
+for row in rows:
+    print(row)
+
+query = 'how many houses are built in 1979?'
+
+system_prompt = f"Write lines of python code in plain text to query an SQLite database named 'housing_info.db'. The database is already created\
+Just provide the executable code with out extra content\
+The columns in the database are: ['Price', 'Bedrooms', 'Bathrooms', 'SquareFeet', 'YearBuilt', 'GarageSpaces', 'LotSize', 'ZipCode', 'CrimeRate', 'SchoolRating']\
+The query is: '{query}'. DO NOT INCLUDE COMMENTS OR ANYTHING THAT IS NOT RELATED TO THE CODE!. Do not include >>> Store the final answer in results\
+\
+"
+
+
+response = llm.invoke(system_prompt + query ).strip()
+print("Response: ")
+print(response)
+
+
+executable_string = f"cursor.execute('{response}')"
+print("Formatted Executable String:")
+print(executable_string)  # Debugging output to verify
+
+exec(executable_string)
+result = cursor.fetchone()  # Fetch the result properly
+print("Query Result:", result)
 
 
 
-print("\nQuery Sent to AWS Bedrock:")
-print(query)
+# Close the database connection
+conn.close()
 
 
-generated_code = generate_code(query)
-print("\nGenerated Python Code:")
-print(generated_code)
+
+
+
+
