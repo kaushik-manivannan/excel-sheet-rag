@@ -5,12 +5,11 @@ import json
 class CalculationTool:
     """Tool for performing calculations on Excel data."""
     
-    def __init__(self, excel_file_path):
+    def __init__(self, excel_file_path, sheets_info):
         self.excel_file_path = excel_file_path
+        self.sheets_info = sheets_info
     
-    def run_calculation(self, calculation_type: str, sheet_name: str, column: str, 
-                        filter_column: str = None, filter_value: str = None, 
-                        other_column: str = None):
+    def run_calculation(self, calculation_type: str, sheet_name: str, column: str, filter_column: str = None, filter_value: str = None, other_column: str = None):
         """
         Run calculations on Excel data based on parameters.
         
@@ -26,12 +25,18 @@ class CalculationTool:
             String containing calculation results
         """
         try:
+            # Check if sheet exists
+            if sheet_name not in self.sheets_info:
+                available_sheets = list(self.sheets_info.keys())
+                return f"Worksheet named '{sheet_name}' not found. Available sheets are: {', '.join(available_sheets)}"
+            
             # Load Excel data
             df = pd.read_excel(self.excel_file_path, sheet_name=sheet_name)
             
             # Verify column exists
             if column not in df.columns:
-                return f"Column '{column}' not found in sheet '{sheet_name}'"
+                available_columns = list(df.columns)
+                return f"Column '{column}' not found in sheet '{sheet_name}'. Available columns are: {', '.join(available_columns)}"
             
             # Apply filters if specified
             if filter_column and filter_value is not None:
@@ -85,8 +90,13 @@ class CalculationTool:
     
     def get_tool(self):
         """Return a StructuredTool that wraps this function"""
+        # Create a description that includes available sheets and their columns
+        sheets_description = "Available sheets: "
+        for sheet_name, info in self.sheets_info.items():
+            sheets_description += f"\n- {sheet_name}: {', '.join(info['columns'])}"
+        
         return StructuredTool.from_function(
             func=self.run_calculation,
             name="CalculateValue",
-            description="Calculate values from Excel data. Provide calculation_type (e.g., sum, average, min, max, count), sheet_name, and column name.",
+            description=f"Calculate values from Excel data. Provide calculation_type (e.g., sum, average, min, max, count), sheet_name, and column name. {sheets_description}",
         )

@@ -5,7 +5,6 @@ from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from tools.search_tools import SearchExcelTool
 from tools.calculation_tools import CalculationTool
-from tools.visualization_tools import VisualizationTool
 
 # Load environment variables
 load_dotenv()
@@ -19,8 +18,7 @@ def create_agent_executor(vector_db, excel_file_path, sheets_info):
     
     # Create tools
     search_tool = SearchExcelTool(vector_db)
-    calculation_tool = CalculationTool(excel_file_path)
-    visualization_tool = VisualizationTool(excel_file_path)
+    calculation_tool = CalculationTool(excel_file_path, sheets_info)
     
     # Get the structured tools
     tools = [
@@ -30,11 +28,6 @@ def create_agent_executor(vector_db, excel_file_path, sheets_info):
             description="Useful for searching information in the Excel dataset. Input: a question about the data."
         ),
         calculation_tool.get_tool(),  # Use the structured tool
-        Tool(
-            name="GenerateChart",
-            func=visualization_tool.generate_chart,
-            description="Useful for generating charts from Excel data. Input should be a JSON string with keys: 'sheet_name', 'x_column', 'y_column', and optional 'chart_type' ('line', 'bar', 'scatter')."
-        )
     ]
     
     # Use a different agent type that works better with structured tools
